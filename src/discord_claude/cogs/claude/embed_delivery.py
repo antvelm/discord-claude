@@ -5,6 +5,8 @@ from typing import Any
 
 from discord import Embed, HTTPException
 
+from .plain_delivery import plain_text_replies_enabled, send_plain, split_embeds
+
 DISCORD_EMBED_TOTAL_LIMIT = 6000
 DISCORD_EMBEDS_PER_MESSAGE_LIMIT = 10
 DISCORD_MESSAGE_CONTENT_LIMIT = 2000
@@ -67,6 +69,12 @@ async def send_embed_batches(
     normalized_embeds = _normalize_embeds(embed=embed, embeds=embeds)
     normalized_files = _normalize_files(file=file, files=files)
     single_file_input = file is not None and files is None
+
+    if normalized_embeds and not normalized_files and plain_text_replies_enabled():
+        plain = split_embeds(normalized_embeds)
+        if plain is not None:
+            text, keep = plain
+            return await send_plain(send, text, keep, view=view, **kwargs)
 
     if not normalized_embeds:
         send_kwargs = dict(kwargs)
