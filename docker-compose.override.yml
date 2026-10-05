@@ -1,0 +1,9 @@
+services:
+  python-bot:
+    environment:
+      PLAIN_TEXT_REPLIES: "true"
+    volumes:
+      - ./memories:/app/memories
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
