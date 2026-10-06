@@ -313,13 +313,13 @@ class ClaudeCog(commands.Cog):
     )
     @option(
         "web_search",
-        description="Enable web search to find current information. (default: false)",
+        description="Enable web search to find current information. (default: true)",
         required=False,
         type=bool,
     )
     @option(
         "web_fetch",
-        description="Enable web fetch to retrieve full web page content. (default: false)",
+        description="Enable web fetch to retrieve full web page content. (default: true)",
         required=False,
         type=bool,
     )
@@ -368,8 +368,8 @@ class ClaudeCog(commands.Cog):
         effort: str | None = None,
         thinking_budget: int | None = None,
         thinking_display: str = "summarized",
-        web_search: bool = False,
-        web_fetch: bool = False,
+        web_search: bool = True,
+        web_fetch: bool = True,
         code_execution: bool = False,
         memory: bool = False,
         advisor: bool = False,

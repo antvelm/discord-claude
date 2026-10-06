@@ -594,6 +594,8 @@ class TestRunChatCommand:
                 ctx=mock_discord_context,
                 prompt="Hello",
                 model="claude-haiku-4-5",
+                web_search=False,
+                web_fetch=False,
             )
 
         assert mock_discord_context.send_followup.await_count > 1

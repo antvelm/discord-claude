@@ -163,6 +163,8 @@ class TestClaudeCog:
             ctx=mock_discord_context,
             prompt="Hello Claude!",
             model="claude-sonnet-4",
+            web_search=False,
+            web_fetch=False,
         )
 
         mock_anthropic_client.messages.create.assert_called_once()
