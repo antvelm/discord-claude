@@ -37,6 +37,7 @@ from discord_claude.util import (
     Conversation,
     ConversationKey,
     ToolChoice,
+    ToolHandler,
     UsageTotals,
     format_anthropic_error,
     get_default_advisor_model,
@@ -57,6 +58,7 @@ from .embeds import (
     append_stop_reason_embed,
     append_thinking_embeds,
 )
+from .reply_edits import EditReplyHandler, SentMessage, recording_send, remember_reply
 from .responses import ParsedResponse, extract_response_content
 from .state import compact_conversation, create_button_view
 from .tool_registry import TOOL_REGISTRY, get_anthropic_tools
@@ -403,11 +405,14 @@ async def call_api_with_tool_loop(
     user_id: int,
     max_iterations: int = 10,
     progress_callback: ProgressCallback | None = None,
+    tool_handlers: dict[str, ToolHandler] | None = None,
 ) -> ParsedResponse:
     """Call the Anthropic API, handling tool-use loops and context management.
 
     ``progress_callback`` receives the readable progress text of each tool_use
     iteration when the request runs with ``thinking.display == "updates"``.
+    ``tool_handlers`` are request-scoped client tool handlers (bound to one
+    conversation) and take precedence over the cog's own handlers.
     """
     model = api_params.get("model", "")
     use_compaction = model in COMPACTION_MODELS
@@ -551,7 +556,13 @@ async def call_api_with_tool_loop(
                         cog.logger.warning("Failed to post progress update", exc_info=True)
             tool_results = []
             for tool_block in parsed.tool_use_blocks:
-                result_text = await cog._execute_tool(tool_block.name, tool_block.input, user_id)
+                handler = (tool_handlers or {}).get(tool_block.name)
+                if handler is not None:
+                    result_text = await handler.execute(tool_block.input, user_id)
+                else:
+                    result_text = await cog._execute_tool(
+                        tool_block.name, tool_block.input, user_id
+                    )
                 tool_results.append(
                     {
                         "type": "tool_result",
@@ -634,6 +645,7 @@ async def handle_new_message_in_conversation(cog, message, conversation: Convers
                 if params.thinking_display == THINKING_DISPLAY_UPDATES
                 else None
             ),
+            tool_handlers={"edit_reply": EditReplyHandler(message.channel, conversation.replies)},
         )
         conversation.touch()
         response_text = parsed.text
@@ -669,12 +681,14 @@ async def handle_new_message_in_conversation(cog, message, conversation: Convers
         view = cog.views.get(message.author)
 
         if embeds:
+            sent: list[SentMessage] = []
             reply_message = await send_embed_batches(
-                message.reply,
+                recording_send(message.reply, sent),
                 embeds=embeds,
                 view=view,
                 logger=cog.logger,
             )
+            remember_reply(conversation.replies, sent)
             cog.last_view_messages[message.author] = reply_message
         else:
             reply_message = await message.reply(
@@ -820,6 +834,7 @@ async def run_chat_command(
     web_fetch: bool = True,
     code_execution: bool = False,
     memory: bool = False,
+    edit_reply: bool = True,
     advisor: bool = False,
     mcp: str | None = None,
     tool_choice: str | None = None,
@@ -864,6 +879,8 @@ async def run_chat_command(
             enabled_tools.append("code_execution")
         if memory:
             enabled_tools.append("memory")
+        if edit_reply:
+            enabled_tools.append("edit_reply")
         advisor_model = get_default_advisor_model(model) if advisor else None
         if advisor and advisor_model is None:
             supported_models = ", ".join(sorted(ADVISOR_MODEL_COMPATIBILITY))
@@ -958,6 +975,7 @@ async def run_chat_command(
                 if thinking_display == THINKING_DISPLAY_UPDATES
                 else None
             ),
+            tool_handlers={"edit_reply": EditReplyHandler(ctx.channel, [])},
         )
         response_text = parsed.text
 
@@ -1039,8 +1057,9 @@ async def run_chat_command(
             initial_tool_choice=resolved_tool_choice,
         )
 
+        sent: list[SentMessage] = []
         message = await send_embed_batches(
-            ctx.send_followup,
+            recording_send(ctx.send_followup, sent),
             embeds=embeds,
             view=view,
             logger=cog.logger,
@@ -1048,6 +1067,7 @@ async def run_chat_command(
         cog.last_view_messages[ctx.author] = message
 
         conversation = Conversation(params=params, messages=conversation_messages)
+        remember_reply(conversation.replies, sent)
         cog.conversations[conv_key] = conversation
 
     except Exception as error:

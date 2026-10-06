@@ -165,6 +165,7 @@ class TestClaudeCog:
             model="claude-sonnet-4",
             web_search=False,
             web_fetch=False,
+            edit_reply=False,
         )
 
         mock_anthropic_client.messages.create.assert_called_once()

@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from discord.ui import Select
 
+from discord_claude.cogs.claude.tool_registry import TOOL_REGISTRY
 from discord_claude.cogs.claude.views import ButtonView
 
 
@@ -29,7 +30,7 @@ def test_init_without_running_event_loop():
     selects = [c for c in view.children if isinstance(c, Select)]
     assert len(selects) == 1
     assert selects[0].min_values == 0
-    assert selects[0].max_values == 4
+    assert selects[0].max_values == len(TOOL_REGISTRY)
 
 
 class TestButtonView:
@@ -38,7 +39,7 @@ class TestButtonView:
         selects = [c for c in view.children if isinstance(c, Select)]
         assert len(selects) == 1
         assert selects[0].min_values == 0
-        assert selects[0].max_values == 4
+        assert selects[0].max_values == len(TOOL_REGISTRY)
 
     async def test_initial_tools_set_defaults(self):
         view = _make_view(initial_tools=["web_search", "memory"])

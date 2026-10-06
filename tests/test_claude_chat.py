@@ -129,6 +129,37 @@ class TestCallApiWithToolLoop:
         assert cog.client.messages.create.call_count == 2
         assert len(messages) == 4
 
+    async def test_request_scoped_tool_handler_takes_precedence(self, cog):
+        """tool_handlers passed for one request run instead of the cog's handlers."""
+        from discord_claude.cogs.claude.chat import call_api_with_tool_loop
+
+        tool_block = MagicMock()
+        tool_block.type = "tool_use"
+        tool_block.id = "toolu_edit"
+        tool_block.name = "edit_reply"
+        tool_block.input = {"old_text": "a", "new_text": "b"}
+        tool_response = MagicMock(content=[tool_block], stop_reason="tool_use", usage=None)
+
+        final_text = MagicMock(type="text", text="Fixed it.", citations=None)
+        final_response = MagicMock(content=[final_text], stop_reason="end_turn", usage=None)
+        cog.client.messages.create = AsyncMock(side_effect=[tool_response, final_response])
+
+        handler = MagicMock()
+        handler.execute = AsyncMock(return_value="Edited your earlier reply in place.")
+        messages = [{"role": "user", "content": "Fix that"}]
+
+        parsed = await call_api_with_tool_loop(
+            cog,
+            api_params={"model": "claude-sonnet-4", "max_tokens": 1024},
+            messages=messages,
+            user_id=123,
+            tool_handlers={"edit_reply": handler},
+        )
+
+        assert parsed.text == "Fixed it."
+        handler.execute.assert_awaited_once_with({"old_text": "a", "new_text": "b"}, 123)
+        assert messages[2]["content"][0]["content"] == "Edited your earlier reply in place."
+
     async def test_max_iterations_safety(self, cog):
         """Loop stops at max_iterations."""
         pause_response = MagicMock()
@@ -596,6 +627,7 @@ class TestRunChatCommand:
                 model="claude-haiku-4-5",
                 web_search=False,
                 web_fetch=False,
+                edit_reply=False,
             )
 
         assert mock_discord_context.send_followup.await_count > 1

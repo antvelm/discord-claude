@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from .reply_edits import EDIT_REPLY_TOOL
+
 ExecutionMode = Literal["server", "client", "mcp"]
 
 
@@ -66,6 +68,14 @@ TOOL_REGISTRY: dict[str, ToolRegistryEntry] = {
         ui_label="Code Execution",
         ui_description="Run code in a sandbox.",
         execution_mode="server",
+    ),
+    "edit_reply": ToolRegistryEntry(
+        id="edit_reply",
+        anthropic_tool=EDIT_REPLY_TOOL,
+        ui_label="Edit Replies",
+        ui_description="Let Claude fix its earlier replies in place.",
+        execution_mode="client",
+        handler_key="edit_reply",
     ),
 }
 

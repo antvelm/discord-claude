@@ -336,6 +336,12 @@ class ClaudeCog(commands.Cog):
         type=bool,
     )
     @option(
+        "edit_reply",
+        description="Let Claude edit its earlier replies in place when you ask for a fix. (default: true)",
+        required=False,
+        type=bool,
+    )
+    @option(
         "advisor",
         description="Enable the Anthropic advisor beta for strategic mid-generation guidance. (default: false)",
         required=False,
@@ -372,6 +378,7 @@ class ClaudeCog(commands.Cog):
         web_fetch: bool = True,
         code_execution: bool = False,
         memory: bool = False,
+        edit_reply: bool = True,
         advisor: bool = False,
         mcp: str | None = None,
         tool_choice: str | None = None,
@@ -394,6 +401,7 @@ class ClaudeCog(commands.Cog):
             web_fetch=web_fetch,
             code_execution=code_execution,
             memory=memory,
+            edit_reply=edit_reply,
             advisor=advisor,
             mcp=mcp,
             tool_choice=tool_choice,

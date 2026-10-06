@@ -586,6 +586,8 @@ class Conversation:
     messages: list[dict[str, Any]]
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    # Discord messages of the bot's recent replies (reply_edits.SentMessage), oldest first.
+    replies: list[list[Any]] = field(default_factory=list)
 
     def touch(self) -> None:
         self.updated_at = datetime.now(UTC)
